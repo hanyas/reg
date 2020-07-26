@@ -69,9 +69,8 @@ class GPRegressor(gpytorch.models.ExactGP):
         return output
 
     def init_preprocess(self, target, input):
-        if self.input_trans is None and self.target_trans is None:
-            self.target_trans = StandardScaler()
-            self.input_trans = StandardScaler()
+        self.target_trans = StandardScaler()
+        self.input_trans = StandardScaler()
 
         self.target_trans.fit(target[:, None])
         self.input_trans.fit(input)
@@ -84,7 +83,8 @@ class GPRegressor(gpytorch.models.ExactGP):
             input = input.reshape(-1, self.input_size)
 
         if preprocess:
-            self.init_preprocess(target, input)
+            if self.input_trans is None and self.target_trans is None:
+                self.init_preprocess(target, input)
             target = transform(target[:, None], self.target_trans).squeeze()
             input = transform(input, self.input_trans)
 

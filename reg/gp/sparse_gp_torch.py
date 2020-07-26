@@ -25,7 +25,8 @@ from reg.gp.utils import ensure_res_numpy_floats
 class SparseGPRegressor(gpytorch.models.ExactGP):
 
     @ensure_args_torch_floats
-    def __init__(self, input, inducing_size, device='cpu'):
+    def __init__(self, input, inducing_size, device='cpu',
+                 input_transform=None, target_transform=None):
         if device == 'gpu' and torch.cuda.is_available():
             self.device = torch.device('cuda:0')
         else:
@@ -51,8 +52,8 @@ class SparseGPRegressor(gpytorch.models.ExactGP):
                                                 inducing_points=input[inducing_idx, ...],
                                                 likelihood=_likelihood)
 
-        self.input_trans = None
-        self.target_trans = None
+        self.input_trans = input_transform
+        self.target_trans = target_transform
 
     @property
     def model(self):
@@ -95,7 +96,8 @@ class SparseGPRegressor(gpytorch.models.ExactGP):
             input = input.reshape(-1, self.input_size)
 
         if preprocess:
-            self.init_preprocess(target, input)
+            if self.input_trans is None and self.target_trans is None:
+                self.init_preprocess(target, input)
             target = transform(target[:, None], self.target_trans).squeeze()
             input = transform(input, self.input_trans)
 
