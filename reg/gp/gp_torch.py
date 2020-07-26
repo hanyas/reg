@@ -22,7 +22,8 @@ from reg.gp.utils import ensure_res_numpy_floats
 
 class GPRegressor(gpytorch.models.ExactGP):
 
-    def __init__(self, input_size, device='cpu'):
+    def __init__(self, input_size, device='cpu',
+                 input_transform=None, target_transform=None):
         if device == 'gpu' and torch.cuda.is_available():
             self.device = torch.device('cuda:0')
         else:
@@ -38,8 +39,8 @@ class GPRegressor(gpytorch.models.ExactGP):
         self.mean_module = ZeroMean()
         self.covar_module = ScaleKernel(RBFKernel())
 
-        self.input_trans = None
-        self.target_trans = None
+        self.input_trans = input_transform
+        self.target_trans = target_transform
 
     @property
     def model(self):
@@ -58,7 +59,7 @@ class GPRegressor(gpytorch.models.ExactGP):
         self.model.eval().to(self.device)
         self.likelihood.eval().to(self.device)
 
-        input = transform(input.reshape((-1, self.input_size)), self.input_trans)
+        input = transform(torch.reshape(input, (-1, self.input_size)), self.input_trans)
 
         with max_preconditioner_size(10), torch.no_grad():
             with max_root_decomposition_size(30), fast_pred_var():
@@ -68,8 +69,9 @@ class GPRegressor(gpytorch.models.ExactGP):
         return output
 
     def init_preprocess(self, target, input):
-        self.target_trans = StandardScaler()
-        self.input_trans = StandardScaler()
+        if self.input_trans is None and self.target_trans is None:
+            self.target_trans = StandardScaler()
+            self.input_trans = StandardScaler()
 
         self.target_trans.fit(target[:, None])
         self.input_trans.fit(input)
